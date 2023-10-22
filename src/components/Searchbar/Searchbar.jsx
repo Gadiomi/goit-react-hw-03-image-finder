@@ -1,28 +1,53 @@
 import React, { Component } from 'react';
-import propTypes from 'prop-types';
+import Notiflix from 'notiflix';
 
-export class Searchbar extends Component {
-  static propTypes = { onSubmit: propTypes.func };
+import css from './Searchbar.module.css';
+
+class Searchbar extends Component {
+  state = {
+    inputvalue: '',
+  };
+  hendleSubmit = e => {
+    e.preventDefault();
+    if (this.state.inputvalue.trim() === '') {
+      Notiflix.Notify.failure('please writing value ');
+    }
+
+    this.props.onSubmit(this.state.inputvalue);
+    this.setState({
+      inputvalue: '',
+    });
+  };
+
+  hendleChange = e => {
+    this.setState({
+      inputvalue: e.currentTarget.value.toLowerCase(),
+    });
+  };
   render() {
     return (
-      <header className="Searchbar">
-        <form
-          className="SearchForm"
-          onSubmit={event => this.props.onSubmit(event)}
-        >
-          <button type="submit" className="SearchForm-button">
-            <span className="SearchForm-button-label">Search</span>
-          </button>
-
+      <header className={css.searchbar}>
+        <form onSubmit={this.hendleSubmit} className={css.form}>
           <input
-            className="SearchForm-input"
+            onChange={this.hendleChange}
+            className={css.input}
             type="text"
-            autoComplete="off"
-            autoFocus
+            autocomplete="off"
+            autofocus
             placeholder="Search images and photos"
           />
+          <button type="submit" className={css.button}>
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Search_Icon.svg/1200px-Search_Icon.svg.png"
+              width="30px"
+              height="30px"
+              alt=""
+            />
+          </button>
         </form>
       </header>
     );
   }
 }
+
+export default Searchbar;

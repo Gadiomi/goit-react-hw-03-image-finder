@@ -1,34 +1,21 @@
-import React, { Component } from 'react';
+import ImageGalleryItem from '../ImageGalleryItem';
+import css from './ImageGallery.module.css';
+import PropTypes from 'prop-types';
 
-import { ImageGalleryItem } from '../ImageGalleryItem/ImageGalleryItem';
-import propTypes from 'prop-types';
-
-export class ImageGallery extends Component {
-  static defaultProps = { imagesArray: propTypes.array };
-  static propTypes = {
-    loader: propTypes.func,
-    imagesArray: propTypes.array,
-    modalFn: propTypes.func,
-  };
-  componentDidMount() {
-    this.props.loader(true);
-  }
-
-  render() {
-    return (
-      <ul className="ImageGallery">
-        {this.props.imagesArray.map((image, idx) => {
-          return (
-            <ImageGalleryItem
-              key={image.id}
-              imageLink={image.webformatURL}
-              imagAlt={image.tags}
-              largeImageURL={image.largeImageURL}
-              modalFn={this.props.modalFn}
-            />
-          );
-        })}
+function ImageGallery({ items }) {
+  return (
+    <>
+      <ul className={css.gallery}>
+        {items.map(item => (
+          <ImageGalleryItem key={item.id} item={item} />
+        ))}
       </ul>
-    );
-  }
+    </>
+  );
 }
+
+export default ImageGallery;
+
+ImageGallery.propTypes = {
+  items: PropTypes.array,
+};

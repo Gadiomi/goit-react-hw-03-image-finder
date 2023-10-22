@@ -1,111 +1,101 @@
 import React, { Component } from 'react';
-import axios from 'axios';
-import { RotatingLines } from 'react-loader-spinner';
 
-import { Button } from './Button/Button';
-import { ImageGallery } from './ImageGallery/ImageGallery';
-import { Searchbar } from './Searchbar/Searchbar';
-import { Modal } from './Modal/Modal';
+import Button from './Button';
+import ImageGallery from './ImageGallery';
+import { fetchImages } from './feachImage/FeachImage';
+import Searchbar from './Searchbar';
+import Notiflix from 'notiflix';
+import Loader from './Loader';
 
-const apiKey = '38792090-476cb700ea90821fee266c404';
+let page = 1;
 
-export class App extends Component {
+class App extends Component {
   state = {
-    searchWords: '',
-    images: [],
-    showModal: false,
-    modalImage: '',
-    showLoader: false,
-    currentPage: 1,
+    inputData: '',
+    items: [],
+
+    status: 'idle',
+    totalHits: 0,
   };
 
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({ showModal: !showModal }));
+  handleSubmit = async inputData => {
+    page = 1;
+    if (inputData.trim() === '') {
+      Notiflix.Notify.info('You cannot search by empty field, try again.');
+      return;
+    } else {
+      try {
+        this.setState({ status: 'pending' });
+        const { totalHits, hits } = await fetchImages(inputData, page);
+        if (hits.length < 1) {
+          this.setState({ status: 'idle' });
+          Notiflix.Notify.failure(
+            'Sorry, there are no images matching your search query. Please try again.'
+          );
+        } else {
+          this.setState({
+            items: hits,
+            inputData,
+            totalHits: totalHits,
+            status: 'resolved',
+          });
+        }
+      } catch (error) {
+        this.setState({ status: 'rejected' });
+      }
+    }
   };
+  onNextPage = async () => {
+    this.setState({ status: 'pending' });
 
-  pushImagesToState = response => {
-    const imagesFromResponse = response.data.hits;
-    let newSearchArray = [];
-    newSearchArray = [...this.state.images, ...imagesFromResponse];
-    this.setState(({ images }) => ({ images: newSearchArray }));
+    try {
+      const { hits } = await fetchImages(this.state.inputData, (page += 1));
+      this.setState(prevState => ({
+        items: [...prevState.items, ...hits],
+        status: 'resolved',
+      }));
+    } catch (error) {
+      this.setState({ status: 'rejected' });
+    }
   };
-  setModalImage = linkImg => {
-    return this.setState(({ modalImage }) => ({ modalImage: linkImg }));
-  };
-  openLargeImage = linkImg => {
-    this.setModalImage(linkImg);
-    this.toggleModal();
-  };
-
-  loaderToggle = bool => {
-    return this.setState(({ showLoader }) => ({ showLoader: bool }));
-  };
-
-  getImages(words, page) {
-    this.loaderToggle(true);
-    axios
-      .get(
-        `https://pixabay.com/api/?q=${words}&page=${page}&key=${apiKey}&image_type=photo&orientation=horizontal&per_page=12`
-      )
-      .then(response => {
-        this.pushImagesToState(response);
-        this.loaderToggle(false);
-        this.setState(prevState => ({
-          currentPage: prevState.currentPage + 1,
-        }));
-      });
-  }
-
-  searchFormSubmit = event => {
-    event.preventDefault();
-    this.setState({
-      searchWords: '',
-      images: [],
-      showModal: false,
-      modalImage: '',
-      currentPage: 1,
-    });
-    const searchWordsValue = event.target[1].value;
-
-    this.setState({ searchWords: searchWordsValue });
-    const page = 1;
-    this.getImages(searchWordsValue, page);
-    event.target.reset();
-  };
-
-  loadMoreFn = () => {
-    this.loaderToggle(true);
-    this.getImages(this.state.searchWords, this.state.currentPage);
-  };
-
   render() {
-    return (
-      <div className="App">
-        {this.state.showModal && (
-          <Modal closeFn={this.toggleModal} loader={this.loaderToggle}>
-            <img src={this.state.modalImage} alt="modal" />
-          </Modal>
-        )}
-        <Searchbar onSubmit={this.searchFormSubmit} />
-
-        {this.state.searchWords !== '' && (
-          <ImageGallery
-            loader={this.loaderToggle}
-            imagesArray={this.state.images}
-            modalFn={this.openLargeImage}
-          ></ImageGallery>
-        )}
-        {this.state.showLoader && (
-          <RotatingLines
-            strokeColor="blue"
-            strokeWidth="5"
-            animationDuration="0.50"
-            width="70"
-            visible={true}
-          />
-        )}
-        {this.state.searchWords !== '' && <Button fn={this.loadMoreFn} />}
-      </div>
-    );
+    const { totalHits, status, items } = this.state;
+    if (status === 'idle') {
+      return (
+        <div>
+          <Searchbar onSubmit={this.handleSubmit} />
+        </div>
+      );
+    }
+    if (status === 'pending') {
+      return (
+        <div>
+          <Searchbar onSubmit={this.handleSubmit} />
+          <ImageGallery page={page} items={this.state.items} />
+          <Loader />
+          {totalHits > 12 && <Button onClick={this.onNextPage} />}
+        </div>
+      );
+    }
+    if (status === 'rejected') {
+      return (
+        <div>
+          <Searchbar onSubmit={this.handleSubmit} />
+          <p>Something wrong, try later</p>
+        </div>
+      );
+    }
+    if (status === 'resolved') {
+      return (
+        <div>
+          <Searchbar onSubmit={this.handleSubmit} />
+          <ImageGallery page={page} items={this.state.items} />
+          {totalHits > 12 && totalHits > items.length && (
+            <Button onClick={this.onNextPage} />
+          )}
+        </div>
+      );
+    }
   }
 }
+export default App;
